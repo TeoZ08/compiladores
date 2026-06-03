@@ -1,22 +1,33 @@
-#include <fstream>
-#include "token.h"
+#ifndef SCANNER_H
+#define SCANNER_H
 
-class Scanner 
+#include "symboltable.h"
+#include <fstream>
+
+class Scanner
 {
-    private: 
+    private:
         string input;//Armazena o texto de entrada
         int pos;//Posição atual
         int line;
-    
+        SymbolTable* st;
+
+        bool isAtEnd();
+        char currentChar();
+        char nextChar();
+        void skipSpacesAndComments();
+
     public:
     //Construtor
-        Scanner(string);
+        Scanner(string, SymbolTable*);
 
         int getLine();
-    
+
         //Método que retorna o próximo token da entrada
-        Token* nextToken();        
-    
+        Token* nextToken();
+
         //Método para manipular erros
         void lexicalError(string);
 };
+
+#endif

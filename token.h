@@ -2,21 +2,29 @@
 #define TOKEN_H
 
 #include <iostream>
-#include <ctype.h>//Funções de caracteres
+#include <ctype.h>
 #include <string>
 
 using namespace std;
 
-enum Names 
+enum Names
 {
     UNDEF,
-    //Identificadores e constantes
     ID,
+
+    INT,
+    CHAR,
+    VOID,
+    IF,
+    ELSE,
+    WHILE,
+    FOR,
+    RETURN,
+
     INTEGERCONST,
     CHARCONST,
     STRINGCONST,
 
-    //Operadores
     PLUS,
     MINUS,
     MULT,
@@ -32,9 +40,8 @@ enum Names
     OR,
     NOT,
 
-    //Separadores
-    LPAREN,
-    RPAREN,
+    LPARENTHESE,
+    RPARENTHESE,
     LBRACE,
     RBRACE,
     LBRACKET,
@@ -45,13 +52,13 @@ enum Names
     END_OF_FILE
 };
 
-class Token 
+class Token
 {
-    public: 
+    public:
         int name;
         int attribute;
         string lexeme;
-    
+
         Token(int name)
         {
             this->name = name;
@@ -64,7 +71,7 @@ class Token
             attribute = UNDEF;
             lexeme = l;
         }
-        
+
         Token(int name, int attr)
         {
             this->name = name;

@@ -1,14 +1,12 @@
 #include "scanner.h"
 
-/*Construtor que recebe uma string com o nome do arquivo
-de entrada e preenche input com seu conteúdo. */
-Scanner::Scanner(string input)
+//Construtor que recebe uma string com o nome do arquivo
+//de entrada e preenche input com seu conteúdo.
+Scanner::Scanner(string input, SymbolTable* table)
 {
-    /*this->input = input;
-    cout << "Entrada: " << input << endl << "Tamanho: "
-         << input.length() << endl;*/
     pos = 0;
     line = 1;
+    st = table;
 
     ifstream inputFile(input, ios::in);
     string line;
@@ -22,279 +20,310 @@ Scanner::Scanner(string input)
         inputFile.close();
     }
     else
-        cout << "Unable to open file\n";
-
-    // A próxima linha deve ser comentada posteriormente.
-    // Ela é utilizada apenas para verificar se o
-    // preenchimento de input foi feito corretamente.
-    // cout << this->input;
+    {
+        cout << "Erro ao abrir arquivo de entrada" << endl;
+        exit(EXIT_FAILURE);
+    }
 }
 
-int Scanner::getLine()
+int
+Scanner::getLine()
 {
     return line;
 }
 
-// Método que retorna o próximo token da entrada
-Token *
-Scanner::nextToken()
+bool
+Scanner::isAtEnd()
 {
-    Token *tok;
-    string lexeme;
-    bool continua = true;
+    return pos >= (int) input.length();
+}
 
-    // Consumir espaços em branco e comentários
-    while (continua)
+char
+Scanner::currentChar()
+{
+    if (isAtEnd())
+        return '\0';
+
+    return input[pos];
+}
+
+char
+Scanner::nextChar()
+{
+    if (pos + 1 >= (int) input.length())
+        return '\0';
+
+    return input[pos + 1];
+}
+
+void
+Scanner::skipSpacesAndComments()
+{
+    bool repeat = true;
+
+    while (repeat && !isAtEnd())
     {
-        continua = false;
+        repeat = false;
 
-        while (isspace(input[pos]))
+        while (!isAtEnd() && isspace((unsigned char) currentChar()))
         {
-            if (input[pos] == '\n')
+            if (currentChar() == '\n')
                 line++;
             pos++;
         }
 
-        if (input[pos] == '/' && input[pos + 1] == '/')
+        if (currentChar() == '/' && nextChar() == '/')
         {
             pos += 2;
-            while (input[pos] != '\0' && input[pos] != '\n')
+            while (!isAtEnd() && currentChar() != '\n')
                 pos++;
-            continua = true;
+            repeat = true;
         }
-        else if (input[pos] == '/' && input[pos + 1] == '*')
+        else if (currentChar() == '/' && nextChar() == '*')
         {
             pos += 2;
-
-            while (input[pos] != '\0' && !(input[pos] == '*' && input[pos + 1] == '/'))
+            while (!isAtEnd() && !(currentChar() == '*' && nextChar() == '/'))
             {
-                if (input[pos] == '\n')
+                if (currentChar() == '\n')
                     line++;
                 pos++;
             }
 
-            if (input[pos] == '\0')
-                lexicalError("comentario de bloco nao fechado");
+            if (isAtEnd())
+                lexicalError("comentário de bloco não terminado");
 
             pos += 2;
-            continua = true;
+            repeat = true;
         }
     }
+}
 
-    // Fim de arquivo
-    if (input[pos] == '\0')
+//Método que retorna o próximo token da entrada
+Token*
+Scanner::nextToken()
+{
+    Token* tok;
+    string lexeme;
+
+    skipSpacesAndComments();
+
+    if (isAtEnd())
+        return new Token(END_OF_FILE, "EOF");
+
+    //Trecho que reconhece identificadores e palavras reservadas
+    if (isalpha((unsigned char) currentChar()))
     {
-        tok = new Token(END_OF_FILE);
-    }
-    // Identificadores
-    else if (isalpha(input[pos]))
-    {
-        lexeme.push_back(input[pos]);
+        lexeme.push_back(currentChar());
         pos++;
 
-        while (isalnum(input[pos]) || input[pos] == '_')
+        while (!isAtEnd() && (isalnum((unsigned char) currentChar()) || currentChar() == '_'))
         {
-            lexeme.push_back(input[pos]);
+            lexeme.push_back(currentChar());
             pos++;
         }
 
-        tok = new Token(ID, lexeme);
+        STEntry* obj = st->get(lexeme);
+        if (!obj)
+            tok = new Token(ID, lexeme);
+        else
+            tok = new Token(obj->token->name, lexeme);
+
+        return tok;
     }
-    // Constantes inteiras
-    else if (isdigit(input[pos]))
+
+    //Trecho que reconhece constantes inteiras
+    if (isdigit((unsigned char) currentChar()))
     {
-        lexeme.push_back(input[pos]);
+        lexeme.push_back(currentChar());
         pos++;
 
-        while (isdigit(input[pos]))
+        while (!isAtEnd() && isdigit((unsigned char) currentChar()))
         {
-            lexeme.push_back(input[pos]);
+            lexeme.push_back(currentChar());
             pos++;
         }
 
-        tok = new Token(INTEGERCONST, lexeme);
+        return new Token(INTEGERCONST, lexeme);
     }
-    // Constantes de caractere
-    else if (input[pos] == '\'')
+
+    //Trecho que reconhece constantes de caractere
+    if (currentChar() == '\'')
     {
-        lexeme.push_back(input[pos]);
+        lexeme.push_back(currentChar());
         pos++;
 
-        if (input[pos] == '\\')
+        if (isAtEnd() || currentChar() == '\n')
+            lexicalError("constante de caractere inválida");
+
+        if (currentChar() == '\\')
         {
-            lexeme.push_back(input[pos]);
+            lexeme.push_back(currentChar());
             pos++;
 
-            if (input[pos] == 'n' || input[pos] == '0')
+            if (currentChar() == 'n' || currentChar() == '0')
             {
-                lexeme.push_back(input[pos]);
+                lexeme.push_back(currentChar());
                 pos++;
             }
             else
-                lexicalError("constante de caractere mal formada");
+                lexicalError("sequência de escape inválida em constante de caractere");
         }
-        else if (isprint(input[pos]) && input[pos] != '\\' && input[pos] != '\'')
+        else if (isprint((unsigned char) currentChar()) && currentChar() != '\\' && currentChar() != '\'')
         {
-            lexeme.push_back(input[pos]);
+            lexeme.push_back(currentChar());
             pos++;
         }
         else
-            lexicalError("constante de caractere mal formada");
+            lexicalError("constante de caractere inválida");
 
-        if (input[pos] == '\'')
-        {
-            lexeme.push_back(input[pos]);
-            pos++;
-            tok = new Token(CHARCONST, lexeme);
-        }
-        else
-            lexicalError("constante de caractere mal formada");
-    }
-    // Constantes string
-    else if (input[pos] == '"')
-    {
-        lexeme.push_back(input[pos]);
+        if (currentChar() != '\'')
+            lexicalError("constante de caractere não terminada");
+
+        lexeme.push_back(currentChar());
         pos++;
 
-        while (input[pos] != '\0' && input[pos] != '"')
+        return new Token(CHARCONST, lexeme);
+    }
+
+    //Trecho que reconhece constantes string
+    if (currentChar() == '"')
+    {
+        lexeme.push_back(currentChar());
+        pos++;
+
+        while (!isAtEnd() && currentChar() != '"' && currentChar() != '\n')
         {
-            if (input[pos] == '\n')
-                lexicalError("constante string nao fechada");
+            if (!isprint((unsigned char) currentChar()))
+                lexicalError("caractere inválido em string");
 
-            if (!isprint(input[pos]))
-                lexicalError("constante string mal formada");
-
-            lexeme.push_back(input[pos]);
+            lexeme.push_back(currentChar());
             pos++;
         }
 
-        if (input[pos] == '\0')
-            lexicalError("constante string nao fechada");
+        if (isAtEnd() || currentChar() == '\n')
+            lexicalError("string não terminada");
 
-        lexeme.push_back(input[pos]);
+        lexeme.push_back(currentChar());
         pos++;
-        tok = new Token(STRINGCONST, lexeme);
-    }
-    // Operadores compostos
-    else if (input[pos] == '=' && input[pos + 1] == '=')
-    {
-        pos += 2;
-        tok = new Token(EQUAL);
-    }
-    else if (input[pos] == '!' && input[pos + 1] == '=')
-    {
-        pos += 2;
-        tok = new Token(NOTEQUAL);
-    }
-    else if (input[pos] == '<' && input[pos + 1] == '=')
-    {
-        pos += 2;
-        tok = new Token(LESSEQUAL);
-    }
-    else if (input[pos] == '>' && input[pos + 1] == '=')
-    {
-        pos += 2;
-        tok = new Token(GREATEREQUAL);
-    }
-    else if (input[pos] == '&' && input[pos + 1] == '&')
-    {
-        pos += 2;
-        tok = new Token(AND);
-    }
-    else if (input[pos] == '|' && input[pos + 1] == '|')
-    {
-        pos += 2;
-        tok = new Token(OR);
-    }
-    // Operadores simples
-    else if (input[pos] == '+')
-    {
-        pos++;
-        tok = new Token(PLUS);
-    }
-    else if (input[pos] == '-')
-    {
-        pos++;
-        tok = new Token(MINUS);
-    }
-    else if (input[pos] == '*')
-    {
-        pos++;
-        tok = new Token(MULT);
-    }
-    else if (input[pos] == '/')
-    {
-        pos++;
-        tok = new Token(DIV);
-    }
-    else if (input[pos] == '=')
-    {
-        pos++;
-        tok = new Token(ASSIGN);
-    }
-    else if (input[pos] == '<')
-    {
-        pos++;
-        tok = new Token(LESS);
-    }
-    else if (input[pos] == '>')
-    {
-        pos++;
-        tok = new Token(GREATER);
-    }
-    else if (input[pos] == '!')
-    {
-        pos++;
-        tok = new Token(NOT);
-    }
-    // Separadores
-    else if (input[pos] == '(')
-    {
-        pos++;
-        tok = new Token(LPAREN);
-    }
-    else if (input[pos] == ')')
-    {
-        pos++;
-        tok = new Token(RPAREN);
-    }
-    else if (input[pos] == '{')
-    {
-        pos++;
-        tok = new Token(LBRACE);
-    }
-    else if (input[pos] == '}')
-    {
-        pos++;
-        tok = new Token(RBRACE);
-    }
-    else if (input[pos] == '[')
-    {
-        pos++;
-        tok = new Token(LBRACKET);
-    }
-    else if (input[pos] == ']')
-    {
-        pos++;
-        tok = new Token(RBRACKET);
-    }
-    else if (input[pos] == ',')
-    {
-        pos++;
-        tok = new Token(COMMA);
-    }
-    else if (input[pos] == ';')
-    {
-        pos++;
-        tok = new Token(SEMICOLON);
-    }
-    else
-        lexicalError("token mal formado");
 
-    return tok;
+        return new Token(STRINGCONST, lexeme);
+    }
+
+    //Operadores e separadores
+    switch (currentChar())
+    {
+        case '+':
+            pos++;
+            return new Token(PLUS, "+");
+
+        case '-':
+            pos++;
+            return new Token(MINUS, "-");
+
+        case '*':
+            pos++;
+            return new Token(MULT, "*");
+
+        case '/':
+            pos++;
+            return new Token(DIV, "/");
+
+        case '=':
+            if (nextChar() == '=')
+            {
+                pos += 2;
+                return new Token(EQUAL, "==");
+            }
+            pos++;
+            return new Token(ASSIGN, "=");
+
+        case '!':
+            if (nextChar() == '=')
+            {
+                pos += 2;
+                return new Token(NOTEQUAL, "!=");
+            }
+            pos++;
+            return new Token(NOT, "!");
+
+        case '<':
+            if (nextChar() == '=')
+            {
+                pos += 2;
+                return new Token(LESSEQUAL, "<=");
+            }
+            pos++;
+            return new Token(LESS, "<");
+
+        case '>':
+            if (nextChar() == '=')
+            {
+                pos += 2;
+                return new Token(GREATEREQUAL, ">=");
+            }
+            pos++;
+            return new Token(GREATER, ">");
+
+        case '&':
+            if (nextChar() == '&')
+            {
+                pos += 2;
+                return new Token(AND, "&&");
+            }
+            lexicalError("operador inválido");
+            break;
+
+        case '|':
+            if (nextChar() == '|')
+            {
+                pos += 2;
+                return new Token(OR, "||");
+            }
+            lexicalError("operador inválido");
+            break;
+
+        case '(':
+            pos++;
+            return new Token(LPARENTHESE, "(");
+
+        case ')':
+            pos++;
+            return new Token(RPARENTHESE, ")");
+
+        case '{':
+            pos++;
+            return new Token(LBRACE, "{");
+
+        case '}':
+            pos++;
+            return new Token(RBRACE, "}");
+
+        case '[':
+            pos++;
+            return new Token(LBRACKET, "[");
+
+        case ']':
+            pos++;
+            return new Token(RBRACKET, "]");
+
+        case ',':
+            pos++;
+            return new Token(COMMA, ",");
+
+        case ';':
+            pos++;
+            return new Token(SEMICOLON, ";");
+
+        default:
+            lexeme.push_back(currentChar());
+            lexicalError("caractere inválido: " + lexeme);
+    }
+
+    return new Token(UNDEF);
 }
 
-void Scanner::lexicalError(string msg)
+void
+Scanner::lexicalError(string msg)
 {
     cout << "Linha " << line << ": " << msg << endl;
 
