@@ -6,6 +6,7 @@ Scanner::Scanner(string input, SymbolTable* table)
 {
     pos = 0;
     line = 1;
+    lexicalErrors = 0;
     st = table;
 
     ifstream inputFile(input, ios::in);
@@ -30,6 +31,12 @@ int
 Scanner::getLine()
 {
     return line;
+}
+
+int
+Scanner::getLexicalErrors()
+{
+    return lexicalErrors;
 }
 
 bool
@@ -90,7 +97,11 @@ Scanner::skipSpacesAndComments()
             }
 
             if (isAtEnd())
-                lexicalError("comentário de bloco não terminado");
+            {
+                lexicalErrors++;
+                cout << "Linha " << line << ": comentário de bloco não terminado" << endl;
+                return;
+            }
 
             pos += 2;
             repeat = true;
@@ -153,7 +164,7 @@ Scanner::nextToken()
         pos++;
 
         if (isAtEnd() || currentChar() == '\n')
-            lexicalError("constante de caractere inválida");
+            return lexicalError("constante de caractere inválida");
 
         if (currentChar() == '\\')
         {
@@ -166,7 +177,7 @@ Scanner::nextToken()
                 pos++;
             }
             else
-                lexicalError("sequência de escape inválida em constante de caractere");
+                return lexicalError("sequência de escape inválida em constante de caractere");
         }
         else if (isprint((unsigned char) currentChar()) && currentChar() != '\\' && currentChar() != '\'')
         {
@@ -174,10 +185,10 @@ Scanner::nextToken()
             pos++;
         }
         else
-            lexicalError("constante de caractere inválida");
+            return lexicalError("constante de caractere inválida");
 
         if (currentChar() != '\'')
-            lexicalError("constante de caractere não terminada");
+            return lexicalError("constante de caractere não terminada");
 
         lexeme.push_back(currentChar());
         pos++;
@@ -194,14 +205,14 @@ Scanner::nextToken()
         while (!isAtEnd() && currentChar() != '"' && currentChar() != '\n')
         {
             if (!isprint((unsigned char) currentChar()))
-                lexicalError("caractere inválido em string");
+                return lexicalError("caractere inválido em string");
 
             lexeme.push_back(currentChar());
             pos++;
         }
 
         if (isAtEnd() || currentChar() == '\n')
-            lexicalError("string não terminada");
+            return lexicalError("string não terminada");
 
         lexeme.push_back(currentChar());
         pos++;
@@ -270,8 +281,7 @@ Scanner::nextToken()
                 pos += 2;
                 return new Token(AND, "&&");
             }
-            lexicalError("operador inválido");
-            break;
+            return lexicalError("operador inválido: '&' isolado, use '&&'");
 
         case '|':
             if (nextChar() == '|')
@@ -279,8 +289,7 @@ Scanner::nextToken()
                 pos += 2;
                 return new Token(OR, "||");
             }
-            lexicalError("operador inválido");
-            break;
+            return lexicalError("operador inválido: '|' isolado, use '||'");
 
         case '(':
             pos++;
@@ -316,16 +325,17 @@ Scanner::nextToken()
 
         default:
             lexeme.push_back(currentChar());
-            lexicalError("caractere inválido: " + lexeme);
+            return lexicalError("caractere inválido: " + lexeme);
     }
 
     return new Token(UNDEF);
 }
 
-void
+Token*
 Scanner::lexicalError(string msg)
 {
     cout << "Linha " << line << ": " << msg << endl;
-
-    exit(EXIT_FAILURE);
+    lexicalErrors++;
+    pos++;
+    return new Token(UNDEF);
 }

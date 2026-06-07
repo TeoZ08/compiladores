@@ -27,6 +27,8 @@ class Parser
         bool isAddOp(int);
         bool isMulOp(int);
         bool isSyncToken(int);
+        bool isFunctionStart(int);
+        void syncTo(set<int>);
 
         void program();
         void function();

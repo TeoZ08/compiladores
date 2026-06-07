@@ -10,6 +10,7 @@ class Scanner
         string input;//Armazena o texto de entrada
         int pos;//Posição atual
         int line;
+        int lexicalErrors;
         SymbolTable* st;
 
         bool isAtEnd();
@@ -22,12 +23,13 @@ class Scanner
         Scanner(string, SymbolTable*);
 
         int getLine();
+        int getLexicalErrors();
 
         //Método que retorna o próximo token da entrada
         Token* nextToken();
 
         //Método para manipular erros
-        void lexicalError(string);
+        Token* lexicalError(string);
 };
 
 #endif

@@ -32,7 +32,7 @@ Parser::run()
 
     program();
 
-    if (errors == 0)
+    if (errors == 0 && scanner->getLexicalErrors() == 0)
         cout << "Compilação encerrada com sucesso!" << endl;
     else
         cout << "Compilação encerrada com erros." << endl;
@@ -48,7 +48,7 @@ Parser::program()
         else
         {
             error("declaração de função esperada");
-            advance();
+            syncTo({INT, CHAR, VOID, END_OF_FILE});
         }
     }
 
@@ -77,7 +77,13 @@ Parser::function()
     while (lToken->name != RBRACE && lToken->name != END_OF_FILE)
     {
         error("sentença inválida no corpo da função");
-        advance();
+        syncTo({SEMICOLON, RBRACE, END_OF_FILE});
+
+        if (lToken->name == SEMICOLON)
+        {
+            advance();
+            statementList();
+        }
     }
 
     match(RBRACE);
@@ -253,7 +259,13 @@ Parser::compoundStmt()
     while (lToken->name != RBRACE && lToken->name != END_OF_FILE)
     {
         error("sentença inválida no bloco");
-        advance();
+        syncTo({SEMICOLON, RBRACE, END_OF_FILE});
+
+        if (lToken->name == SEMICOLON)
+        {
+            advance();
+            statementList();
+        }
     }
 
     match(RBRACE);
@@ -472,6 +484,19 @@ Parser::isSyncToken(int t)
 {
     return t == SEMICOLON || t == RPARENTHESE || t == RBRACE ||
            t == RBRACKET || t == COMMA;
+}
+
+bool
+Parser::isFunctionStart(int t)
+{
+    return isType(t) || t == VOID;
+}
+
+void
+Parser::syncTo(set<int> tokens)
+{
+    while (lToken->name != END_OF_FILE && tokens.find(lToken->name) == tokens.end())
+        advance();
 }
 
 void
