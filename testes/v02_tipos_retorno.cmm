@@ -1,0 +1,9 @@
+int f(void) {
+    return 1;
+}
+char g(void) {
+    return 'a';
+}
+void main(void) {
+    return;
+}

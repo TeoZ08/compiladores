@@ -1,0 +1,6 @@
+int get(int v[], int n) {
+    return v[0];
+}
+void main(void) {
+    return;
+}

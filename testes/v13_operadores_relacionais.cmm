@@ -1,0 +1,14 @@
+void main(void) {
+    int x;
+    int a;
+    int b;
+    a = 1;
+    b = 2;
+    if (a == b) x = 1;
+    if (a != b) x = 2;
+    if (a < b)  x = 3;
+    if (a <= b) x = 4;
+    if (a > b)  x = 5;
+    if (a >= b) x = 6;
+    return;
+}

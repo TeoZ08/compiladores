@@ -1,0 +1,7 @@
+void imprime(char s[]) {
+    return;
+}
+void main(void) {
+    imprime("hello");
+    return;
+}

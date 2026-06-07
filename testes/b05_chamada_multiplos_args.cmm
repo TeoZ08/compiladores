@@ -1,0 +1,9 @@
+int f(int a, int b, int c) {
+    return a + b + c;
+}
+void main(void) {
+    int x;
+    x = f(1, 2, 3);
+    x = f(x, x + 1, x + 2);
+    return;
+}

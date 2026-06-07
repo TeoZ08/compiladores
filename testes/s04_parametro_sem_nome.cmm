@@ -1,0 +1,6 @@
+int f(int) {
+    return 1;
+}
+void main(void) {
+    return;
+}

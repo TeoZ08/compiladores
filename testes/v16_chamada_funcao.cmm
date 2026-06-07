@@ -1,0 +1,13 @@
+int dobro(int x) {
+    return x + x;
+}
+void imprime(int x) {
+    return;
+}
+void main(void) {
+    int x;
+    x = dobro(5);
+    x = dobro(dobro(2));
+    imprime(x);
+    return;
+}

@@ -1,0 +1,16 @@
+void main(void) {
+    int x;
+    int a;
+    int b;
+    int c;
+    a = 2;
+    b = 3;
+    c = 4;
+    x = a + b * c;
+    x = a * b + c;
+    x = (a + b) * c;
+    x = a * (b + c);
+    x = -a * b;
+    x = -(a * b);
+    return;
+}
